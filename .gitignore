@@ -1,0 +1,6 @@
+data/raw/*.csv
+data/processed/
+data/sandbox/
+__pycache__/
+*.pyc
+.env
