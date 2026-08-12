@@ -60,7 +60,7 @@
 - Type: number (float), GBP
 - Description: estimated cost of the medicine issued (not actual net spend)
 - Example values: 457.8, 47, 282, 34822.67
-- Nulls: 12,306 (~3.9%) — no price mapping for some VMPs
+- Nulls: 12,306 (~3.9%) no price mapping for some VMPs
 - Notes: indicative only, overstates true spend (excludes confidential rebates); range −£1.63M to £57.2M; 2,040 negative values (reversals)
 
 ## Sample Rows
@@ -74,9 +74,10 @@ YEAR_MONTH,"ODS_CODE",VMP_SNOMED_CODE,"VMP_PRODUCT_NAME",UNIT_OF_MEASURE_IDENTIF
 ​```
 
 ## Data Quality Observations
-1. Header typo: TOTAL_QUANITY_IN_VMP_UNIT is misspelled — must be typed exactly in code.
-2. No trust name in the file — only ODS_CODE; needs an external ODS lookup for readable names.
-3. Mixed units (TABLET, ML, PATCH...) mean TOTAL_QUANITY values aren't additive across medicines.
-4. SNOMED codes get corrupted by Excel into scientific notation — must be read as text.
-5. INDICATIVE_COST has 12,306 nulls (~3.9%) and both numeric columns contain negatives (2,113 quantities, 2,040 costs) — likely returns/stock adjustments; must be handled before aggregating.
-6. No true duplicates: 0 rows repeat on YEAR_MONTH + ODS_CODE + VMP_SNOMED_CODE, confirming the grain is one row per trust × medicine × month.
+
+1. Header typo: TOTAL_QUANITY_IN_VMP_UNIT is misspelled and must be typed exactly in code.
+2. No trust name in the file, only ODS_CODE; readable names need an external ODS lookup.
+3. Mixed units (TABLET, ML, PATCH) mean TOTAL_QUANITY values are not additive across medicines.
+4. SNOMED codes get corrupted by Excel into scientific notation, so they must be read as text.
+5. INDICATIVE_COST has 12,306 nulls (about 3.9%), and both numeric columns contain negatives (2,113 quantities, 2,040 costs), likely returns or stock adjustments that must be handled before aggregating.
+6. No true duplicates: 0 rows repeat on YEAR_MONTH + ODS_CODE + VMP_SNOMED_CODE, confirming the grain is one row per trust, medicine, and month.
