@@ -47,6 +47,7 @@ def add_derived_columns(df):
         df["INDICATIVE_COST"],
         q=[0, 0.25, 0.75, 1.0],
         labels=["low", "medium", "high"],
+        duplicates="drop",
     )
 
     print("Added derived columns: cost_per_unit, cost_category")
