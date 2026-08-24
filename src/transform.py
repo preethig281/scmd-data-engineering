@@ -18,10 +18,8 @@ def load_raw(filepath):
 def remove_negatives(df):
     """Remove rows with negative quantity or cost (stock reversals). Logs how many."""
     before = len(df)
-
     df = df[df["TOTAL_QUANITY_IN_VMP_UNIT"] >= 0]
     df = df[df["INDICATIVE_COST"].isna() | (df["INDICATIVE_COST"] >= 0)]
-
     removed = before - len(df)
     print(f"Removed {removed:,} negative rows ({removed / before:.1%})")
     return df
@@ -39,18 +37,23 @@ def deduplicate(df):
 
 def add_derived_columns(df):
     """Add cost_per_unit and cost_category derived columns."""
-    # cost_per_unit: cost divided by quantity; NaN where quantity is 0 (avoid divide-by-zero)
     df["cost_per_unit"] = df["INDICATIVE_COST"] / df["TOTAL_QUANITY_IN_VMP_UNIT"].replace(0, pd.NA)
-
-    # cost_category: low / medium / high based on cost quartiles
     df["cost_category"] = pd.qcut(
         df["INDICATIVE_COST"],
         q=[0, 0.25, 0.75, 1.0],
         labels=["low", "medium", "high"],
         duplicates="drop",
     )
-
     print("Added derived columns: cost_per_unit, cost_category")
+    return df
+
+
+def standardize_columns(df):
+    """Fix the source header typo and add year/month for the date dimension."""
+    df = df.rename(columns={"TOTAL_QUANITY_IN_VMP_UNIT": "TOTAL_QUANTITY_IN_VMP_UNIT"})
+    df["year"] = df["YEAR_MONTH"].astype(str).str[:4].astype(int)
+    df["month"] = df["YEAR_MONTH"].astype(str).str[4:6].astype(int)
+    print("Standardized column name and added year/month")
     return df
 
 
@@ -61,16 +64,18 @@ def save_parquet(df, output_path):
 
 
 def transform_pipeline(input_path, output_path):
-    """Run the full transform: load, clean, dedup, enrich, save."""
+    """Run the full transform: load, clean, dedup, enrich, standardize, save."""
     df = load_raw(input_path)
     df = remove_negatives(df)
     df = deduplicate(df)
     df = add_derived_columns(df)
+    df = standardize_columns(df)
     save_parquet(df, output_path)
     return df
 
 
 if __name__ == "__main__":
-    df = load_raw(...)
-    df = remove_negatives(df)
-    ...
+    transform_pipeline(
+        "data/raw/scmd_provisional_202605.csv",
+        "data/processed/scmd_202605_processed.parquet",
+    )
