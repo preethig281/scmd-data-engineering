@@ -60,12 +60,17 @@ def save_parquet(df, output_path):
     print(f"Saved {len(df):,} rows to {output_path}")
 
 
-if __name__ == "__main__":
-    df = load_raw("data/raw/scmd_provisional_202605.csv")
+def transform_pipeline(input_path, output_path):
+    """Run the full transform: load, clean, dedup, enrich, save."""
+    df = load_raw(input_path)
     df = remove_negatives(df)
     df = deduplicate(df)
     df = add_derived_columns(df)
-    print(f"\nFinal rows: {len(df):,}, columns: {len(df.columns)}")
-    print(df[["INDICATIVE_COST", "cost_per_unit", "cost_category"]].head())
-    print(df["cost_category"].value_counts(dropna=False))
-    save_parquet(df, "data/processed/scmd_202605_processed.parquet")
+    save_parquet(df, output_path)
+    return df
+
+
+if __name__ == "__main__":
+    df = load_raw(...)
+    df = remove_negatives(df)
+    ...
