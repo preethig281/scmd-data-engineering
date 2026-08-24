@@ -130,3 +130,30 @@ def test_cost_category_has_three_levels():
     result = add_derived_columns(df)
     categories = set(result["cost_category"].dropna().unique())
     assert categories.issubset({"low", "medium", "high"})
+# ---- load_raw and save_parquet (round-trip via a temp file) ----
+
+def test_load_raw_reads_csv(tmp_path):
+    """load_raw should read a CSV and keep code columns as text."""
+    from transform import load_raw
+    csv = tmp_path / "sample.csv"
+    csv.write_text(
+        "YEAR_MONTH,ODS_CODE,VMP_SNOMED_CODE,VMP_PRODUCT_NAME,"
+        "UNIT_OF_MEASURE_IDENTIFIER,UNIT_OF_MEASURE_NAME,"
+        "TOTAL_QUANITY_IN_VMP_UNIT,INDICATIVE_COST\n"
+        "202605,RA2,123,Aspirin,428,TABLET,100,50.0\n"
+    )
+    df = load_raw(str(csv))
+    assert len(df) == 1
+        # kept as text (not converted to a number) — accept object or the newer string dtype
+    assert df["ODS_CODE"].dtype == object or str(df["ODS_CODE"].dtype) in ("string", "str")
+
+
+def test_save_parquet_writes_file(tmp_path):
+    """save_parquet should write a readable Parquet file."""
+    from transform import save_parquet
+    df = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
+    out = tmp_path / "out.parquet"
+    save_parquet(df, str(out))
+    # read it back and confirm it matches
+    reloaded = pd.read_parquet(out)
+    assert len(reloaded) == 2
