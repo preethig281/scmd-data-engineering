@@ -1,31 +1,28 @@
 import pandas as pd
+from load import get_connection
 
-CSV_PATH = "data/raw/scmd_provisional_202605.csv"
 
-# Read codes as text so long SNOMED/ODS values aren't corrupted into numbers
-df = pd.read_csv(CSV_PATH, dtype={
-    "ODS_CODE": str,
-    "VMP_SNOMED_CODE": str,
-    "UNIT_OF_MEASURE_IDENTIFIER": str,
-})
+def check_row_count_drift(parquet_path, expected_min=280000):
+    """Halt if the source file looks suspiciously small (silent data loss upstream)."""
+    n = len(pd.read_parquet(parquet_path))
+    if n < expected_min:
+        print(f"FAILED: row count gate - {n:,} rows (expected >= {expected_min:,})")
+        return False
+    print(f"PASSED: row count gate - {n:,} rows")
+    return True
 
-print("Rows:", len(df))
-print("Columns:", list(df.columns))
 
-print("\n--- Null counts per column ---")
-print(df.isnull().sum())
-
-print("\n--- Numeric ranges ---")
-for col in ["TOTAL_QUANITY_IN_VMP_UNIT", "INDICATIVE_COST"]:
-    print(col, "-> min:", df[col].min(), "max:", df[col].max())
-
-print("\n--- Duplicate check ---")
-key = ["YEAR_MONTH", "ODS_CODE", "VMP_SNOMED_CODE"]
-dupes = df.duplicated(subset=key).sum()
-print("Duplicate rows on", key, ":", dupes)
-
-print("\n--- Negative value counts ---")
-neg_qty = (df["TOTAL_QUANITY_IN_VMP_UNIT"] < 0).sum()
-neg_cost = (df["INDICATIVE_COST"] < 0).sum()
-print("Negative quantities:", neg_qty)
-print("Negative costs:", neg_cost)
+def check_referential_integrity(conn):
+    """Halt if any fact row references a trust/medicine/date not in the dimensions."""
+    orphans = conn.execute("""
+        SELECT COUNT(*) FROM fact_medicines_issued f
+        LEFT JOIN dim_trust t ON f.ods_code = t.ods_code
+        LEFT JOIN dim_medicine m ON f.vmp_snomed_code = m.vmp_snomed_code
+        LEFT JOIN dim_date d ON f.year_month = d.year_month
+        WHERE t.ods_code IS NULL OR m.vmp_snomed_code IS NULL OR d.year_month IS NULL
+    """).fetchone()[0]
+    if orphans > 0:
+        print(f"FAILED: referential integrity gate - {orphans:,} orphaned fact rows")
+        return False
+    print("PASSED: referential integrity gate")
+    return True
